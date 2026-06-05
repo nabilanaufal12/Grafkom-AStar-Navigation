@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Governors Island — A* Pathfinder</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <span class="logo-icon">🏝️</span>
+    <span class="logo-text">GOVERNORS <em>ISLAND</em></span>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-pill"><span class="stat-label">NODES</span><span class="stat-val" id="vNodes">—</span></div>
+    <div class="stat-pill"><span class="stat-label">EDGES</span><span class="stat-val" id="vEdges">—</span></div>
+    <div class="stat-pill"><span class="stat-label">PATH</span><span class="stat-val" id="vPath">—</span></div>
+    <div class="stat-pill"><span class="stat-label">ZOOM</span><span class="stat-val" id="vZoom">1.0×</span></div>
+    <div class="stat-pill"><span class="stat-label">STATUS</span><span class="stat-val" id="vStatus">IDLE</span></div>
+    <div class="stat-pill"><span class="stat-label">STEP</span><span class="stat-val" id="vStep">—</span></div>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="panel panel-l">
+    <section class="sec">
+      <h2 class="sec-title">🗺️ PETA</h2>
+      <button class="btn btn-primary" id="btnMap"><span>🔀</span> Generate Peta Baru</button>
+      <button class="btn btn-orange" id="btnRoads"><span>🛣️</span> Generate Jalan Baru</button>
+      <button class="btn" id="btnPos"><span>🎯</span> Acak Start/End</button>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">🚀 NAVIGASI</h2>
+      <button class="btn btn-go" id="btnStart"><span>▶</span> <span id="lblStart">START A*</span></button>
+      <button class="btn" id="btnStep"><span>⏭</span> Step A*</button>
+      <button class="btn btn-rst" id="btnReset"><span>↺</span> Reset Awal</button>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">📍 PILIH TITIK</h2>
+      <div class="mode-sel">
+        <button class="mode-btn active" id="modeNone">AUTO</button>
+        <button class="mode-btn" id="modeStart">START</button>
+        <button class="mode-btn" id="modeEnd">END</button>
+      </div>
+      <div class="mode-hint" id="modeHint">Klik node untuk Start, Shift+klik untuk End</div>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">🎥 KAMERA</h2>
+      <label class="tog-row"><input type="checkbox" id="chkFollow" checked/><span class="tog-track"></span><span>Auto Follow</span></label>
+      <label class="tog-row"><input type="checkbox" id="chkZoomFollow" checked/><span class="tog-track"></span><span>Auto Zoom</span></label>
+      <button class="btn" id="btnZIn"><span>＋</span> Zoom In</button>
+      <button class="btn" id="btnZOut"><span>－</span> Zoom Out</button>
+      <button class="btn" id="btnFit"><span>⊡</span> Fit View</button>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">📊 LEGENDA</h2>
+      <div class="legend">
+        <div class="leg-row"><span class="leg-line" class="leg-main"></span>Jalan Utama</div>
+        <div class="leg-row"><span class="leg-line" class="leg-secondary"></span>Jalan Cabang</div>
+        <div class="leg-row"><span class="leg-dot" class="leg-start"></span>Titik Start</div>
+        <div class="leg-row"><span class="leg-dot" class="leg-end"></span>Titik End</div>
+        <div class="leg-row"><span class="leg-dot" class="leg-open"></span>Dicek A*</div>
+        <div class="leg-row"><span class="leg-dot" class="leg-closed"></span>Sudah kunjungi</div>
+        <div class="leg-line" class="leg-path-wide"></div>
+        <div class="leg-row" class="leg-path-label"><span></span>Jalur A*</div>
+      </div>
+    </section>
+  </aside>
+
+  <div class="cw" id="cw">
+    <canvas id="mc"></canvas>
+    <div class="hud hud-tl"><span id="hudXY">x: 0  y: 0</span></div>
+    <div class="hud hud-br">Scroll: Zoom • Drag: Pan • Klik: Start • Shift+klik: End</div>
+    <div class="tip" id="tip"></div>
+    <div id="alertBox" class="alert-box"></div>
+    <div id="routeAlert" class="route-alert">Jalur tidak ditemukan</div>
+    <div class="cam-follow-badge" id="followBadge">📷 FOLLOW</div>
+    <div class="step-bar" id="stepBar">
+      <span>⏭</span><span id="stepInfo">Tekan Step A* untuk mulai pencarian</span>
+    </div>
+  </div>
+
+  <aside class="panel panel-r">
+    <section class="sec">
+      <h2 class="sec-title">ℹ️ A* INFO</h2>
+      <div class="astar-info">
+        <div class="astar-row"><span>Algoritma</span><strong>A* Search</strong></div>
+        <div class="astar-row"><span>Heuristik</span><strong id="iHeuristic">Euclidean</strong></div>
+        <div class="astar-row"><span>Open set</span><strong id="iOpen">—</strong></div>
+        <div class="astar-row"><span>Closed set</span><strong id="iClosed">—</strong></div>
+        <div class="astar-row"><span>Iterasi</span><strong id="iIter">—</strong></div>
+      </div>
+      <div class="sl-grp" class="heuristic-select-wrap">
+        <label>Heuristik Aktif <span id="lbHeur">Euclidean</span></label>
+        <select id="selHeuristic" class="sel">
+          <option value="euclidean" selected>Euclidean</option>
+          <option value="manhattan">Manhattan</option>
+          <option value="chebyshev">Chebyshev</option>
+        </select>
+      </div>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">⚙️ PENGATURAN (GENERATE)</h2>
+      <div class="sl-grp">
+        <label>Kepadatan Jalan <span id="lbD">3.5</span></label>
+        <input type="range" id="slD" min="15" max="50" value="35"/>
+      </div>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">🚗 KENDARAAN</h2>
+      <div class="sl-grp">
+        <label>Jenis Kendaraan <span id="lbVeh">Mobil</span></label>
+        <select id="selVehicle" class="sel">
+          <option value="car" selected>Mobil</option>
+          <option value="motor">Motor</option>
+        </select>
+      </div>
+      <div class="sl-grp">
+        <label>Kecepatan <span id="lbSpd">2.0</span></label>
+        <input type="range" id="slSpd" min="1" max="20" value="4"/>
+      </div>
+      <div class="sl-grp">
+        <label>Delay Animasi A* <span id="lbDelay">40</span>ms</label>
+        <input type="range" id="slDelay" min="0" max="200" value="40"/>
+      </div>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">🎨 TAMPILAN</h2>
+      <label class="tog-row"><input type="checkbox" id="chkNodes"/><span class="tog-track"></span><span>Tampilkan Nodes</span></label>
+      <label class="tog-row"><input type="checkbox" id="chkLabels"/><span class="tog-track"></span><span>Label ID Node</span></label>
+      <label class="tog-row"><input type="checkbox" id="chkDeco" checked/><span class="tog-track"></span><span>Bangunan & Pohon</span></label>
+      <label class="tog-row"><input type="checkbox" id="chkGlow" checked/><span class="tog-track"></span><span>Efek Glow</span></label>
+      <label class="tog-row"><input type="checkbox" id="chkTrail" checked/><span class="tog-track"></span><span>Trail Kendaraan</span></label>
+    </section>
+
+    <section class="sec">
+      <h2 class="sec-title">🏝️ PETA AWAL</h2>
+      <div class="preview-wrap">
+        <div class="preview-note">Preview peta Governors Island awal akan tetap tampil walau kamu generate peta baru.</div>
+        <div class="preview-frame"><img id="initialThumb" alt="Preview peta awal Governors Island"/></div>
+        <button class="btn" id="btnPreset"><span>↺</span> Tampilkan Peta Awal</button>
+      </div>
+    </section>
+    <section class="sec">
+      <h2 class="sec-title">📋 LOG</h2>
+      <div class="log-box" id="logBox">
+        <div class="log-e">Sistem siap. Jalan dibuat lebih mulus dan cenderung lurus di semua peta.</div>
+      </div>
+    </section>
+  </aside>
+</main>
+
+
+<script src="maps.js"></script>
+<script src="astar.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
